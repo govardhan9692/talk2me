@@ -70,56 +70,73 @@ class AuthHandler {
   
   static async handleSignup(e) {
     e.preventDefault();
-    console.log('Signup handler called'); // Debug log
-  
     try {
       const name = document.getElementById('signup-name').value;
       const email = document.getElementById('signup-email').value;
       const password = document.getElementById('signup-password').value;
       const confirmPassword = document.getElementById('signup-confirm-password').value;
-  
+
       // Validation
       if (!name || !email || !password || !confirmPassword) {
         throw new Error('All fields are required');
       }
-  
+
       if (password !== confirmPassword) {
         throw new Error('Passwords do not match');
       }
-  
+
       if (password.length < 6) {
         throw new Error('Password must be at least 6 characters');
       }
-  
-      // Create user
-      console.log('Creating user with:', email); // Debug log
+
+      // Step 1: Create authentication user
       const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-      console.log('User created:', userCredential); // Debug log
-  
-      // Set display name
-      await userCredential.user.updateProfile({
+      const user = userCredential.user;
+
+      // Step 2: Update auth profile
+      await user.updateProfile({
         displayName: name
       });
-  
-      // Add user profile with more details
-      const photoURL = await this.handleProfileUpdate(
-        document.getElementById('signup-profile-pic').files[0]
-      );
 
-      await db.collection('users').doc(userCredential.user.uid).set({
+      // Step 3: Create user document in Firestore IMMEDIATELY
+      await db.collection('users').doc(user.uid).set({
         name,
         email,
-        photoURL,
+        photoURL: null,
         status: 'online',
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         lastSeen: firebase.firestore.FieldValue.serverTimestamp()
       });
-  
-      console.log('User profile created'); // Debug log
+
+      // Step 4: Handle profile picture if exists
+      if (document.getElementById('signup-profile-pic').files[0]) {
+        const photoURL = await this.handleProfileUpdate(
+          document.getElementById('signup-profile-pic').files[0]
+        );
+        
+        // Update both auth profile and Firestore document
+        await Promise.all([
+          user.updateProfile({ photoURL }),
+          db.collection('users').doc(user.uid).update({ photoURL })
+        ]);
+      }
+
+      console.log('User profile created successfully');
       alert('Account created successfully!');
-  
+
     } catch (error) {
-      console.error('Signup error:', error); // Debug log
+      console.error('Signup error:', error);
+      
+      // If there's an error after auth creation but before Firestore document creation,
+      // attempt to delete the auth user to maintain consistency
+      if (auth.currentUser) {
+        try {
+          await auth.currentUser.delete();
+        } catch (deleteError) {
+          console.error('Error cleaning up auth user:', deleteError);
+        }
+      }
+      
       alert(error.message);
     }
   }
@@ -177,6 +194,7 @@ class AuthHandler {
   static handleSignedOut() {
     elements.chatSection.classList.add('hidden');
     elements.authSection.classList.remove('hidden');
+    ChatHandler.cleanup(); // Clean up listeners when user logs out
     this.updateUserStatus('offline');
   }
 
@@ -328,12 +346,15 @@ class ChatHandler {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('upload_preset', cloudinaryConfig.uploadPreset);
+
+        // Determine upload endpoint based on file type
+        const endpoint = type === 'image'
+          ? `https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/image/upload`
+          : type === 'application'
+            ? `https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/raw/upload`
+            : `https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/auto/upload`;
         
-        const response = await fetch(
-          `https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/auto/upload`,
-          { method: 'POST', body: formData }
-        );
-        
+        const response = await fetch(endpoint, { method: 'POST', body: formData });
         const data = await response.json();
         fileUrl = data.secure_url;
       }
@@ -367,15 +388,18 @@ class ChatHandler {
     formData.append('upload_preset', cloudinaryConfig.uploadPreset);
 
     try {
-      const response = await fetch(
-        `https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/auto/upload`,
-        {
-          method: 'POST',
-          body: formData
-        }
-      );
-
+      // Use raw upload endpoint if the file is an application (e.g., pdf)
+      const endpoint = file.type.split('/')[0] === 'application'
+        ? `https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/raw/upload`
+        : `https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/auto/upload`;
+      
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        body: formData
+      });
       const data = await response.json();
+      
+      // Pass the file type so that renderMessage handles it correctly
       await this.sendMessage(data.secure_url, file.type.split('/')[0]);
     } catch (error) {
       console.error('Error uploading media:', error);
@@ -421,7 +445,12 @@ class ChatHandler {
           </div>`;
         break;
       default:
-        contentContainer.textContent = message.content;
+        // If message content is a URL, render as clickable link
+        if (/(https?:\/\/[^\s]+)/.test(message.content)) {
+          contentContainer.innerHTML = `<a href="${message.content}" target="_blank">${message.content}</a>`;
+        } else {
+          contentContainer.textContent = message.content;
+        }
     }
   
     // Add message info and options
@@ -686,45 +715,67 @@ class ChatHandler {
     });
   }
 
-  // Update loadChats to not auto-select first chat
+  // Update loadChats to use real-time listener
   static async loadChats() {
     try {
-      const usersSnapshot = await db.collection('users')
-        .where(firebase.firestore.FieldPath.documentId(), '!=', state.currentUser.uid)
-        .get();
-
       const chatList = document.getElementById('chat-list');
-      chatList.innerHTML = '';
+      chatList.innerHTML = ''; // Clear existing list
 
-      if (usersSnapshot.empty) {
-        chatList.innerHTML = `
-          <div class="no-chats">
-            <p>No users found</p>
-          </div>
-        `;
-        return;
-      }
+      // Create real-time listener for users
+      db.collection('users')
+        .onSnapshot(snapshot => {
+          snapshot.docChanges().forEach(change => {
+            const userData = change.doc.data();
+            const userId = change.doc.id;
 
-      usersSnapshot.forEach(doc => {
-        const userData = doc.data();
-        const userDiv = document.createElement('div');
-        userDiv.className = 'chat-user';
-        userDiv.innerHTML = `
-          <div class="chat-user-avatar">
-            <img src="${userData.photoURL || '/api/placeholder/40/40'}" alt="${userData.name}">
-            <span class="status-dot ${userData.status === 'online' ? 'online' : 'offline'}"></span>
-          </div>
-          <div class="chat-user-info">
-            <h4>${userData.name}</h4>
-            <p>${userData.status}</p>
-          </div>
-        `;
+            // Don't show current user in the list
+            if (userId === state.currentUser.uid) return;
 
-        userDiv.addEventListener('click', () => this.startChat(doc.id, userData));
-        chatList.appendChild(userDiv);
-      });
+            if (change.type === 'added') {
+              // New user added
+              const userDiv = document.createElement('div');
+              userDiv.className = 'chat-user';
+              userDiv.id = `chat-user-${userId}`;
+              userDiv.innerHTML = `
+                <div class="chat-user-avatar">
+                  <img src="${userData.photoURL || '/api/placeholder/40/40'}" alt="${userData.name}">
+                  <span class="status-dot ${userData.status === 'online' ? 'online' : 'offline'}"></span>
+                </div>
+                <div class="chat-user-info">
+                  <h4>${userData.name}</h4>
+                  <p>${userData.status}</p>
+                </div>
+              `;
+              userDiv.addEventListener('click', () => this.startChat(userId, userData));
+              chatList.appendChild(userDiv);
+            } 
+            else if (change.type === 'modified') {
+              // Update existing user
+              const userDiv = document.getElementById(`chat-user-${userId}`);
+              if (userDiv) {
+                userDiv.querySelector('img').src = userData.photoURL || '/api/placeholder/40/40';
+                userDiv.querySelector('h4').textContent = userData.name;
+                userDiv.querySelector('p').textContent = userData.status;
+                userDiv.querySelector('.status-dot').className = 
+                  `status-dot ${userData.status === 'online' ? 'online' : 'offline'}`;
+              }
+            }
+            else if (change.type === 'removed') {
+              // Remove user from list
+              const userDiv = document.getElementById(`chat-user-${userId}`);
+              if (userDiv) {
+                userDiv.remove();
+              }
+            }
+          });
+        }, error => {
+          console.error("Error loading chats:", error);
+        });
+
+      // Store unsubscribe function to clean up listener when needed
+      this.unsubscribeUsers = unsubscribe;
     } catch (error) {
-      console.error('Error loading chats:', error);
+      console.error('Error setting up chat list:', error);
     }
   }
 
@@ -779,19 +830,23 @@ class ChatHandler {
     }
 
     this.messageListener = db.collection('messages')
-      .where('participants', 'array-contains', chatUserId)
+      .where('participants', 'array-contains', state.currentUser.uid)
       .orderBy('timestamp')
       .onSnapshot(snapshot => {
         snapshot.docChanges().forEach(change => {
           const message = { ...change.doc.data(), id: change.doc.id };
-          const messageElement = document.querySelector(`[data-message-id="${message.id}"]`);
           
-          if (change.type === 'added' && message.timestamp && !messageElement) {
-            this.renderMessage(message);
-          } else if (change.type === 'modified' && messageElement) {
-            this.updateMessage(message);
-          } else if (change.type === 'removed' && messageElement) {
-            this.removeMessage(message.id);
+          // Only process messages between current user and selected chat user
+          if (message.participants.includes(chatUserId)) {
+            const messageElement = document.querySelector(`[data-message-id="${message.id}"]`);
+            
+            if (change.type === 'added' && message.timestamp && !messageElement) {
+              this.renderMessage(message);
+            } else if (change.type === 'modified' && messageElement) {
+              this.updateMessage(message);
+            } else if (change.type === 'removed' && messageElement) {
+              this.removeMessage(message.id);
+            }
           }
         });
       });
@@ -871,8 +926,93 @@ static closeContactInfo(button) {
     setTimeout(() => panel.remove(), 300);
 }
 
+  // New: Show a preview modal for raw documents (e.g., PDFs)
+  static handleDocumentPreview(file) {
+    const blobUrl = URL.createObjectURL(file);
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+      <div class="modal-content document-preview">
+        <h3>Send Document</h3>
+        ${file.type === 'application/pdf'
+          ? `<embed src="${blobUrl}" type="application/pdf" width="100%" height="400px">`
+          : `<div class="document-icon"><i class="fas fa-file"></i></div><p>${file.name}</p>`
+        }
+        <div class="modal-buttons">
+          <button onclick="this.closest('.modal').remove()">Cancel</button>
+          <button onclick="ChatHandler.sendDocument(this, '${blobUrl}')">Send</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    modal._file = file; // Store file reference
+  }
+
+  // New: Upload document via raw endpoint and send message when confirmed
+  static async sendDocument(button, blobUrl) {
+    const modal = button.closest('.modal');
+    const file = modal._file;
+    button.disabled = true;
+    button.textContent = 'Sending...';
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', cloudinaryConfig.uploadPreset);
+      const endpoint = `https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/raw/upload`;
+      const response = await fetch(endpoint, { method: 'POST', body: formData });
+      const data = await response.json();
+      await this.sendMessage(data.secure_url, 'application');
+      modal.remove();
+    } catch (error) {
+      console.error('Error sending document:', error);
+      button.disabled = false;
+      button.textContent = 'Send';
+      alert('Failed to send document');
+    }
+  }
+  
+  // New: Show a preview modal for video files
+  static handleVideoPreview(file) {
+    const blobUrl = URL.createObjectURL(file);
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+      <div class="modal-content video-preview">
+        <h3>Send Video</h3>
+        <video controls width="100%">
+          <source src="${blobUrl}" type="${file.type}">
+          Your browser does not support the video tag.
+        </video>
+        <div class="modal-buttons">
+          <button onclick="this.closest('.modal').remove()">Cancel</button>
+          <button onclick="ChatHandler.sendVideo(this, '${blobUrl}')">Send</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    modal._file = file;
+  }
+  
+  // New: Upload video using sendMessage with type 'video'
+  static async sendVideo(button, blobUrl) {
+    const modal = button.closest('.modal');
+    const file = modal._file;
+    button.disabled = true;
+    button.textContent = 'Sending...';
+    try {
+      // Call sendMessage with type 'video'
+      await this.sendMessage(null, 'video', file);
+      modal.remove();
+    } catch (error) {
+      console.error('Error sending video:', error);
+      button.disabled = false;
+      button.textContent = 'Send';
+      alert('Failed to send video');
+    }
+  }
+  
   static setupFileUpload() {
-    // Image upload handler
+    // Image upload handler remains unchanged
     const imageBtn = document.querySelector('.input-action-btn:nth-child(2)');
     imageBtn.onclick = () => {
       const input = document.createElement('input');
@@ -882,13 +1022,24 @@ static closeContactInfo(button) {
       input.click();
     };
 
-    // Other file upload handler
+    // Modified file upload handler for raw documents, videos and others
     const fileBtn = document.querySelector('.input-action-btn:first-child');
     fileBtn.onclick = () => {
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = 'video/*,audio/*,.pdf';
-      input.onchange = (e) => this.handleFileUpload(e.target.files[0]);
+      input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          if (file.type.startsWith('video')) {
+            this.handleVideoPreview(file);
+          } else if (file.type.split('/')[0] === 'application') {
+            this.handleDocumentPreview(file);
+          } else {
+            this.handleMediaUpload(file);
+          }
+        }
+      };
       input.click();
     };
   }
@@ -1038,6 +1189,16 @@ static closeContactInfo(button) {
     } catch (error) {
       console.error('Error clearing chat:', error);
       alert('Failed to clear chat');
+    }
+  }
+
+  // Add cleanup method for when user logs out
+  static cleanup() {
+    if (this.unsubscribeUsers) {
+      this.unsubscribeUsers();
+    }
+    if (this.messageListener) {
+      this.messageListener();
     }
   }
 }
