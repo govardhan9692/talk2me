@@ -2186,3 +2186,82 @@ messages-container::-webkit-scrollbar-thumb {
         padding-bottom: max(8px, env(safe-area-inset-bottom));
     }
 }
+
+/* Mobile Layout Fixes */
+@media (max-width: 768px) {
+    .chat-section {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        height: calc(var(--vh, 1vh) * 100);
+        overflow: hidden;
+    }
+
+    .chat-area {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        background: var(--bg-primary);
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+    }
+
+    .chat-section.show-conversation .chat-area {
+        transform: translateX(0);
+    }
+
+    .chat-header {
+        flex: 0 0 auto;
+        height: 60px;
+        padding: max(8px, env(safe-area-inset-top)) 12px 8px 12px;
+        background: var(--bg-primary);
+        border-bottom: 1px solid var(--border-color);
+        z-index: 2;
+    }
+
+    .messages-container {
+        flex: 1 1 auto;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        padding: 12px;
+        margin-bottom: 0;
+        height: auto;
+    }
+
+    .chat-input-area {
+        flex: 0 0 auto;
+        height: 60px;
+        padding: 8px 8px max(8px, env(safe-area-inset-bottom)) 8px;
+        background: var(--bg-primary);
+        border-top: 1px solid var(--border-color);
+        z-index: 2;
+        position: relative;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+    }
+
+    /* Remove any position: fixed from chat-input-area in other media queries */
+    .chat-input-area {
+        position: relative !important;
+    }
+
+    /* Remove any margin-bottom from messages container in other rules */
+    .messages-container {
+        margin-bottom: 0 !important;
+        padding-bottom: 12px !important;
+    }
+
+    /* Ensure proper height calculations */
+    .chat-area > * {
+        min-height: 0;
+    }
+}
