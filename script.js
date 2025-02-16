@@ -325,14 +325,32 @@ class ChatHandler {
   }
 
   static setupMessageInput() {
-    elements.messageInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        this.sendMessage(e.target.value);
-        e.target.value = '';
-      }
+    const messageInput = elements.messageInput;
+    const sendBtn = document.querySelector('.send-btn');
+
+    // Handle enter key press
+    messageInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            this.handleSendMessage();
+        }
     });
-  }
+
+    // Handle send button click
+    sendBtn.addEventListener('click', () => {
+        this.handleSendMessage();
+    });
+}
+
+static handleSendMessage() {
+    const messageInput = elements.messageInput;
+    const content = messageInput.value.trim();
+    
+    if (content) {
+        this.sendMessage(content);
+        messageInput.value = '';
+    }
+}
 
   static async sendMessage(content, type = 'text', file = null) {
     try {
@@ -775,7 +793,7 @@ class ChatHandler {
   static async startChat(userId, userData) {
     state.currentChat = userId;
     
-    // Update chat header
+    // Update chat header with better structure
     const chatHeader = document.querySelector('.chat-header');
     chatHeader.innerHTML = `
       <button class="mobile-back-btn" onclick="ChatHandler.handleBackButton()">
@@ -788,12 +806,14 @@ class ChatHandler {
           <span class="status-text ${userData.status}">${userData.status}</span>
         </div>
       </div>
-      <button class="action-btn" onclick="ChatHandler.clearChat('${userId}')">
-        <i class="fas fa-trash"></i>
-      </button>
-      <button class="action-btn" onclick="ChatHandler.toggleContactInfo('${userId}')">
-        <i class="fas fa-info-circle"></i>
-      </button>
+      <div class="chat-actions">
+        <button class="action-btn" onclick="ChatHandler.clearChat('${userId}')" title="Clear Chat">
+          <i class="fas fa-trash"></i>
+        </button>
+        <button class="action-btn" onclick="ChatHandler.toggleContactInfo('${userId}')" title="Contact Info">
+          <i class="fas fa-info-circle"></i>
+        </button>
+      </div>
     `;
 
     // Enable input field and buttons
@@ -1309,7 +1329,6 @@ class ThemeHandler {
 document.addEventListener('DOMContentLoaded', () => {
   AuthHandler.init();
   ThemeHandler.init();
-  ChatHandler.initFAB();
   new SearchBar();
 });
 

@@ -264,16 +264,20 @@ body {
 
 /* Updated Chat Header Styles */
 .chat-header {
-    padding: 20px;
+    padding: 16px 20px;
     border-bottom: 1px solid var(--border-color);
     background: var(--background-primary);
     box-shadow: var(--shadow-soft);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
 }
 
 /* Chat Header Contact Styles */
 .chat-contact {
+    flex: 1;
     display: flex;
-    justify-content: space-between;
     align-items: center;
     gap: 12px;
 }
@@ -318,18 +322,20 @@ body {
 /* Update chat actions styles */
 .chat-actions {
     display: flex;
-    gap: 8px;
+    align-items: center;
+    gap: 12px;
+    margin-left: auto;
 }
 
 .action-btn {
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
     border-radius: 50%;
     border: none;
-    background: none;
+    background: var(--background-secondary);
     color: var(--text-secondary);
     cursor: pointer;
     transition: all 0.2s ease;
@@ -338,38 +344,7 @@ body {
 .action-btn:hover {
     background: var(--background-secondary);
     color: var(--primary-color);
-}
-
-.action-btn i {
-    font-size: 1.1rem;
-}
-
-/* Add clear chat confirmation styles */
-.action-btn[onclick*="clearChat"] {
-    color: #ff4d4d;
-}
-
-.action-btn[onclick*="clearChat"]:hover {
-    background: #fff1f1;
-}
-
-.chat-actions {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.action-btn {
-    background: none;
-    border: none;
-    color: var(--text-secondary);
-    cursor: pointer;
-    padding: 0.5rem;
-    border-radius: 50%;
-    transition: background-color 0.2s;
-}
-
-.action-btn:hover {
-    background-color: var(--background-secondary);
+    transform: scale(1.05);
 }
 
 /* Contact Info Panel */
@@ -874,6 +849,181 @@ messages-container::-webkit-scrollbar-thumb {
 .message.received {
     align-self: flex-start;
     background: var(--message-received);
+}
+
+/* Updated Chat Input Area Styles */
+.chat-input-area {
+    position: sticky;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 12px 16px;
+    background: var(--background-primary);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+    z-index: 10;
+}
+
+.input-action-btn {
+    width: 40px;
+    height: 40px;
+    min-width: 40px; /* Prevent shrinking */
+    border-radius: 50%;
+    border: none;
+    background: var(--background-secondary);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.message-input-container {
+    flex: 1;
+    min-width: 0; /* Allow container to shrink */
+    position: relative;
+    display: flex;
+    align-items: center;
+    background: var(--background-secondary);
+    border-radius: 24px;
+    padding: 0 8px;
+}
+
+.message-input-container input {
+    flex: 1;
+    min-width: 0; /* Allow input to shrink */
+    height: 40px;
+    padding: 8px 12px;
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+}
+
+.emoji-btn {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 1.2rem;
+    transition: color 0.3s ease;
+    flex-shrink: 0;
+}
+
+.send-btn {
+    width: 42px;
+    height: 42px;
+    min-width: 42px; /* Prevent shrinking */
+    border-radius: 50%;
+    border: none;
+    background: var(--gradient-primary);
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
+}
+
+/* Mobile Specific Adjustments */
+@media (max-width: 768px) {
+    .chat-input-area {
+        padding: 8px;
+        gap: 8px;
+        background: var(--background-primary);
+        position: fixed;
+        bottom: 0;
+        width: 100%;
+    }
+
+    .input-action-btn {
+        width: 36px;
+        height: 36px;
+        min-width: 36px;
+    }
+
+    .message-input-container {
+        padding: 0 4px;
+        height: 36px;
+    }
+
+    .message-input-container input {
+        height: 36px;
+        padding: 6px 8px;
+        font-size: 0.9rem;
+    }
+
+    .emoji-btn {
+        width: 28px;
+        height: 28px;
+        min-width: 28px;
+        font-size: 1.1rem;
+    }
+
+    .send-btn {
+        width: 38px;
+        height: 38px;
+        min-width: 38px;
+    }
+
+    /* Ensure the messages container doesn't get covered by input area */
+    .messages-container {
+        margin-bottom: 60px;
+    }
+
+    /* Ensure the input area stays above other content */
+    .chat-input-area {
+        z-index: 100;
+    }
+}
+
+/* Extra Small Screens */
+@media (max-width: 360px) {
+    .chat-input-area {
+        padding: 6px;
+        gap: 6px;
+    }
+
+    .input-action-btn {
+        width: 32px;
+        height: 32px;
+        min-width: 32px;
+    }
+
+    .message-input-container {
+        height: 32px;
+    }
+
+    .message-input-container input {
+        height: 32px;
+        font-size: 0.85rem;
+    }
+
+    .emoji-btn {
+        width: 24px;
+        height: 24px;
+        min-width: 24px;
+    }
+
+    .send-btn {
+        width: 34px;
+        height: 34px;
+        min-width: 34px;
+    }
 }
 
 .chat-input-area {
@@ -1679,4 +1829,31 @@ messages-container::-webkit-scrollbar-thumb {
     border-radius: 12px;
     margin: -8px -12px;
 }
+}
+
+/* Mobile specific adjustments */
+@media (max-width: 768px) {
+    .chat-input-area {
+        padding: 8px;
+        gap: 8px; /* Reduced gap for mobile */
+    }
+
+    .input-action-btn {
+        min-width: 36px;
+        height: 36px;
+    }
+
+    .message-input-container {
+        padding: 0 4px;
+    }
+
+    .message-input-container input {
+        height: 36px;
+        padding: 0 8px;
+    }
+
+    .send-btn {
+        min-width: 40px;
+        height: 40px;
+    }
 }
