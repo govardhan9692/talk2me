@@ -44,7 +44,7 @@
         </div>
 
         <!-- Main Chat Section -->
-        <div id="chat-section" class="chat-section hidden">
+        <div id="chat-section" class="chat-section">
             <!-- Sidebar -->
             <div class="sidebar">
                 <div class="user-profile">
@@ -71,17 +71,14 @@
             <!-- Chat Area -->
             <div class="chat-area">
                 <div class="chat-header">
-                    <div class="chat-contact">
-                        <img id="contact-avatar" src="/api/placeholder/40/40" alt="Contact">
-                        <div class="contact-info">
-                            <h3 id="contact-name">Select a chat</h3>
-                            <p id="contact-status">offline</p>
-                        </div>
-                    </div>
+                    <!-- Header will be populated by JS -->
                 </div>
-
                 <div class="messages-container" id="messages-container">
-                    <!-- Messages will be dynamically added here -->
+                    <div class="welcome-screen">
+                        <i class="fas fa-comments"></i>
+                        <h2>Welcome to Talk2Me</h2>
+                        <p>Select a chat to start messaging</p>
+                    </div>
                 </div>
 
                 <div class="chat-input-area">
@@ -101,6 +98,27 @@
                         <i class="fas fa-paper-plane"></i>
                     </button>
                 </div>
+            </div>
+        </div>
+
+        <!-- Floating Action Button -->
+        <div class="fab-container">
+            <button class="fab" id="fab-button">
+                <i class="fas fa-plus"></i>
+            </button>
+            <div class="fab-menu">
+                <a href="#" class="fab-item" onclick="ChatHandler.newGroupChat()">
+                    <i class="fas fa-users"></i>
+                    New Group
+                </a>
+                <a href="#" class="fab-item" onclick="ChatHandler.startBroadcast()">
+                    <i class="fas fa-broadcast-tower"></i>
+                    Broadcast
+                </a>
+                <a href="#" class="fab-item" onclick="ChatHandler.openSettings()">
+                    <i class="fas fa-cog"></i>
+                    Settings
+                </a>
             </div>
         </div>
 
@@ -127,5 +145,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.8.0/firebase-firestore-compat.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.8.0/firebase-messaging-compat.min.js"></script>
     <script src="script.js"></script>
+    <script src="components/SearchBar.js" type="module"></script>
 </body>
 </html>

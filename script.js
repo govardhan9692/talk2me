@@ -722,7 +722,7 @@ class ChatHandler {
       chatList.innerHTML = ''; // Clear existing list
 
       // Create real-time listener for users
-      db.collection('users')
+      const unsubscribe = db.collection('users')
         .onSnapshot(snapshot => {
           snapshot.docChanges().forEach(change => {
             const userData = change.doc.data();
@@ -732,40 +732,13 @@ class ChatHandler {
             if (userId === state.currentUser.uid) return;
 
             if (change.type === 'added') {
-              // New user added
-              const userDiv = document.createElement('div');
-              userDiv.className = 'chat-user';
-              userDiv.id = `chat-user-${userId}`;
-              userDiv.innerHTML = `
-                <div class="chat-user-avatar">
-                  <img src="${userData.photoURL || '/api/placeholder/40/40'}" alt="${userData.name}">
-                  <span class="status-dot ${userData.status === 'online' ? 'online' : 'offline'}"></span>
-                </div>
-                <div class="chat-user-info">
-                  <h4>${userData.name}</h4>
-                  <p>${userData.status}</p>
-                </div>
-              `;
-              userDiv.addEventListener('click', () => this.startChat(userId, userData));
-              chatList.appendChild(userDiv);
+              this.addChatUser(userId, userData);
             } 
             else if (change.type === 'modified') {
-              // Update existing user
-              const userDiv = document.getElementById(`chat-user-${userId}`);
-              if (userDiv) {
-                userDiv.querySelector('img').src = userData.photoURL || '/api/placeholder/40/40';
-                userDiv.querySelector('h4').textContent = userData.name;
-                userDiv.querySelector('p').textContent = userData.status;
-                userDiv.querySelector('.status-dot').className = 
-                  `status-dot ${userData.status === 'online' ? 'online' : 'offline'}`;
-              }
+              this.updateChatUser(userId, userData);
             }
             else if (change.type === 'removed') {
-              // Remove user from list
-              const userDiv = document.getElementById(`chat-user-${userId}`);
-              if (userDiv) {
-                userDiv.remove();
-              }
+              this.removeChatUser(userId);
             }
           });
         }, error => {
@@ -779,31 +752,48 @@ class ChatHandler {
     }
   }
 
+  static addChatUser(userId, userData) {
+    const chatList = document.getElementById('chat-list');
+    const userDiv = document.createElement('div');
+    userDiv.className = 'chat-user';
+    userDiv.id = `chat-user-${userId}`;
+    userDiv.innerHTML = `
+      <div class="chat-user-avatar">
+        <img src="${userData.photoURL || '/api/placeholder/40/40'}" alt="${userData.name}">
+        <span class="status-dot ${userData.status === 'online' ? 'online' : 'offline'}"></span>
+      </div>
+      <div class="chat-user-info">
+        <h4>${userData.name}</h4>
+        <p>${userData.status}</p>
+      </div>
+    `;
+    userDiv.addEventListener('click', () => this.startChat(userId, userData));
+    chatList.appendChild(userDiv);
+  }
+
   // Update startChat to handle message listening properly
   static async startChat(userId, userData) {
     state.currentChat = userId;
     
-    // Clear previous messages
-    elements.messagesContainer.innerHTML = '';
-    
-    // Update chat header with user info
+    // Update chat header
     const chatHeader = document.querySelector('.chat-header');
     chatHeader.innerHTML = `
+      <button class="mobile-back-btn" onclick="ChatHandler.handleBackButton()">
+        <i class="fas fa-arrow-left"></i>
+      </button>
       <div class="chat-contact">
         <img src="${userData.photoURL || '/api/placeholder/40/40'}" alt="${userData.name}" class="contact-avatar">
         <div class="contact-info">
-          <h3 id="contact-name">${userData.name}</h3>
-          <span id="contact-status" class="status-text">${userData.status}</span>
-        </div>
-        <div class="chat-actions">
-          <button class="action-btn" onclick="ChatHandler.clearChat('${userId}')">
-            <i class="fas fa-trash"></i>
-          </button>
-          <button class="action-btn" onclick="ChatHandler.toggleContactInfo('${userId}')">
-            <i class="fas fa-info-circle"></i>
-          </button>
+          <h3>${userData.name}</h3>
+          <span class="status-text ${userData.status}">${userData.status}</span>
         </div>
       </div>
+      <button class="action-btn" onclick="ChatHandler.clearChat('${userId}')">
+        <i class="fas fa-trash"></i>
+      </button>
+      <button class="action-btn" onclick="ChatHandler.toggleContactInfo('${userId}')">
+        <i class="fas fa-info-circle"></i>
+      </button>
     `;
 
     // Enable input field and buttons
@@ -812,15 +802,20 @@ class ChatHandler {
       btn.disabled = false;
     });
 
-    // Show chat area
-    document.querySelector('.messages-container').classList.remove('hidden');
-    document.querySelector('.chat-input-area').classList.remove('hidden');
+    // Show chat area and handle mobile view
+    if (window.innerWidth <= 768) {
+      document.querySelector('.chat-section').classList.add('show-conversation');
+    }
 
-    // Load messages for this chat
+    // Load messages and setup listeners
     await this.loadMessages(userId);
-
-    // Setup real-time message updates
     this.setupMessageListener(userId);
+  }
+
+  static handleBackButton() {
+    document.querySelector('.chat-section').classList.remove('show-conversation');
+    state.currentChat = null;
+    this.showWelcomeScreen();
   }
 
   // Add real-time message updates
@@ -839,7 +834,7 @@ class ChatHandler {
           // Only process messages between current user and selected chat user
           if (message.participants.includes(chatUserId)) {
             const messageElement = document.querySelector(`[data-message-id="${message.id}"]`);
-            
+                 
             if (change.type === 'added' && message.timestamp && !messageElement) {
               this.renderMessage(message);
             } else if (change.type === 'modified' && messageElement) {
@@ -1060,7 +1055,6 @@ static closeContactInfo(button) {
         </div>
       </div>
     `;
-
     document.body.appendChild(modal);
     modal._file = file; // Store file reference
   }
@@ -1071,7 +1065,6 @@ static closeContactInfo(button) {
     
     button.disabled = true;
     button.textContent = 'Sending...';
-    
     try {
       await this.sendMessage(null, 'image', file);
       modal.remove();
@@ -1088,7 +1081,7 @@ static closeContactInfo(button) {
     const messageInput = document.getElementById('message-input');
     let picker = null;
     const commonEmojis = ['😊', '😂', '❤️', '👍', '😎', '🎉', '🔥', '💪', '🙏', '😭'];
-    
+
     const createPicker = () => {
       if (picker) {
         picker.remove();
@@ -1128,7 +1121,7 @@ static closeContactInfo(button) {
       e.stopPropagation();
       createPicker();
     };
-    
+
     document.addEventListener('click', (e) => {
       if (picker && !picker.contains(e.target) && e.target !== emojiBtn) {
         picker.remove();
@@ -1156,7 +1149,6 @@ static closeContactInfo(button) {
           this.renderMessage(message);
         }
       });
-
     } catch (error) {
       console.error('Error loading messages:', error);
     }
@@ -1167,7 +1159,6 @@ static closeContactInfo(button) {
     if (!confirm('Are you sure you want to clear this chat? This cannot be undone.')) {
       return;
     }
-
     try {
       // Get all messages between current user and selected user
       const messages = await db.collection('messages')
@@ -1185,7 +1176,6 @@ static closeContactInfo(button) {
 
       await batch.commit();
       elements.messagesContainer.innerHTML = ''; // Clear UI
-      
     } catch (error) {
       console.error('Error clearing chat:', error);
       alert('Failed to clear chat');
@@ -1200,6 +1190,97 @@ static closeContactInfo(button) {
     if (this.messageListener) {
       this.messageListener();
     }
+  }
+
+  static initFAB() {
+    const fabButton = document.getElementById('fab-button');
+    const fabMenu = document.querySelector('.fab-menu');
+    
+    fabButton.addEventListener('click', () => {
+      fabMenu.classList.toggle('active');
+    });
+
+    // Close menu when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!fabButton.contains(e.target) && !fabMenu.contains(e.target)) {
+        fabMenu.classList.remove('active');
+      }
+    });
+  }
+
+  static async newGroupChat() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+      <div class="modal-content">
+        <h3>Create New Group</h3>
+        <input type="text" placeholder="Group Name" id="group-name">
+        <div class="group-members">
+          ${await this.getUserListHTML()}
+        </div>
+        <div class="modal-buttons">
+          <button onclick="this.closest('.modal').remove()">Cancel</button>
+          <button onclick="ChatHandler.createGroup(this)">Create Group</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
+
+  static async startBroadcast() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+      <div class="modal-content">
+        <h3>New Broadcast</h3>
+        <textarea placeholder="Message" id="broadcast-message"></textarea>
+        <div class="broadcast-recipients">
+          ${await this.getUserListHTML()}
+        </div>
+        <div class="modal-buttons">
+          <button onclick="this.closest('.modal').remove()">Cancel</button>
+          <button onclick="ChatHandler.sendBroadcast(this)">Send</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
+
+  static openSettings() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+      <div class="modal-content">
+        <h3>Settings</h3>
+        <div class="settings-section">
+          <h4>Notifications</h4>
+          <label>
+            <input type="checkbox" id="notification-sound">
+            Message Sound
+          </label>
+          <label>
+            <input type="checkbox" id="notification-desktop">
+            Desktop Notifications
+          </label>
+        </div>
+        <div class="settings-section">
+          <h4>Privacy</h4>
+          <label>
+            <input type="checkbox" id="read-receipts">
+            Read Receipts
+          </label>
+          <label>
+            <input type="checkbox" id="online-status">
+            Show Online Status
+          </label>
+        </div>
+        <div class="modal-buttons">
+          <button onclick="this.closest('.modal').remove()">Close</button>
+          <button onclick="ChatHandler.saveSettings(this)">Save</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
   }
 }
 
@@ -1228,6 +1309,8 @@ class ThemeHandler {
 document.addEventListener('DOMContentLoaded', () => {
   AuthHandler.init();
   ThemeHandler.init();
+  ChatHandler.initFAB();
+  new SearchBar();
 });
 
 // Handle page visibility for online/offline status
