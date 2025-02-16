@@ -251,8 +251,34 @@ class AuthHandler {
 
 // Chat Handler
 class ChatHandler {
-  // Update init method to maintain welcome screen
+  // Modify setupChatListeners to only listen for messages when a chat is selected
+  static setupChatListeners() {
+    if (this.messageListener) {
+      this.messageListener();  // Unsubscribe from previous listener
+    }
+
+    // Listen for new messages
+    this.messageListener = db.collection('messages')
+      .where('participants', 'array-contains', state.currentUser.uid)
+      .orderBy('timestamp')
+      .onSnapshot(snapshot => {
+        // Only process events if a chat is selected
+        if (!state.currentChat) return;
+        snapshot.docChanges().forEach(change => {
+          if (change.type === 'added' && change.doc.data().timestamp &&
+              change.doc.data().participants.includes(state.currentChat)) {
+            this.renderMessage({ ...change.doc.data(), id: change.doc.id });
+          }
+        });
+      });
+
+    // Listen for typing indicators
+    elements.messageInput.addEventListener('input', this.handleTyping);
+  }
+
+  // Modify init method to ensure clean state
   static async init(user) {
+    state.currentChat = null;
     this.showWelcomeScreen();
     this.setupChatListeners();
     this.setupMessageInput();
@@ -261,9 +287,6 @@ class ChatHandler {
     await this.loadChats();
     this.setupPushNotifications();
     this.setupOfflineSupport();
-    
-    // Remove any existing chat selection
-    state.currentChat = null;
   }
 
   // Add welcome screen method
@@ -281,29 +304,6 @@ class ChatHandler {
     document.querySelectorAll('.input-action-btn, .emoji-btn, .send-btn').forEach(btn => {
       btn.disabled = true;
     });
-  }
-
-  // Modify setupChatListeners to fix double message issue
-  static setupChatListeners() {
-    if (this.messageListener) {
-      this.messageListener();  // Unsubscribe from previous listener
-    }
-
-    // Listen for new messages
-    this.messageListener = db.collection('messages')
-      .where('participants', 'array-contains', state.currentUser.uid)
-      .orderBy('timestamp')
-      .onSnapshot(snapshot => {
-        snapshot.docChanges().forEach(change => {
-          if (change.type === 'added' && change.doc.data().timestamp) {
-            // Only render if message has a timestamp (not a local message)
-            this.renderMessage(change.doc.data());
-          }
-        });
-      });
-
-    // Listen for typing indicators
-    elements.messageInput.addEventListener('input', this.handleTyping);
   }
 
   static setupMessageInput() {
@@ -728,11 +728,11 @@ class ChatHandler {
     }
   }
 
-  // Update startChat to enable inputs
+  // Update startChat to handle message listening properly
   static async startChat(userId, userData) {
     state.currentChat = userId;
     
-    // Clear messages when switching chats
+    // Clear previous messages
     elements.messagesContainer.innerHTML = '';
     
     // Update chat header with user info
@@ -931,12 +931,11 @@ static closeContactInfo(button) {
     }
   }
 
-  // Update setupEmojiPicker for better reliability
+  // Update setupEmojiPicker for proper emoji insertion into the input field
   static setupEmojiPicker() {
     const emojiBtn = document.querySelector('.emoji-btn');
     const messageInput = document.getElementById('message-input');
     let picker = null;
-
     const commonEmojis = ['😊', '😂', '❤️', '👍', '😎', '🎉', '🔥', '💪', '🙏', '😭'];
     
     const createPicker = () => {
@@ -945,41 +944,44 @@ static closeContactInfo(button) {
         picker = null;
         return;
       }
-
       picker = document.createElement('div');
       picker.className = 'emoji-picker';
       picker.innerHTML = commonEmojis.map(emoji => 
         `<button class="emoji-item" data-emoji="${emoji}">${emoji}</button>`
       ).join('');
-
+      
+      // Add click event for each emoji to insert it into the input field
+      picker.querySelectorAll('.emoji-item').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const emoji = btn.getAttribute('data-emoji');
+          const start = messageInput.selectionStart;
+          const end = messageInput.selectionEnd;
+          messageInput.value = messageInput.value.substring(0, start) + 
+                               emoji + 
+                               messageInput.value.substring(end);
+          messageInput.focus();
+          const cursorPos = start + emoji.length;
+          messageInput.selectionStart = messageInput.selectionEnd = cursorPos;
+          picker.remove();
+          picker = null;
+        });
+      });
+      
       picker.style.position = 'absolute';
       picker.style.bottom = '100%';
       picker.style.right = '0';
-
       emojiBtn.parentElement.appendChild(picker);
     };
-
+    
     emojiBtn.onclick = (e) => {
       e.stopPropagation();
       createPicker();
     };
-
+    
     document.addEventListener('click', (e) => {
       if (picker && !picker.contains(e.target) && e.target !== emojiBtn) {
         picker.remove();
         picker = null;
-      }
-    });
-
-    document.addEventListener('emoji-click', (e) => {
-      if (messageInput && !messageInput.disabled) {
-        const start = messageInput.selectionStart;
-        const end = messageInput.selectionEnd;
-        messageInput.value = messageInput.value.substring(0, start) + 
-                           e.detail.emoji + 
-                           messageInput.value.substring(end);
-        messageInput.focus();
-        messageInput.selectionStart = messageInput.selectionEnd = start + 1;
       }
     });
   }
