@@ -1330,6 +1330,19 @@ document.addEventListener('DOMContentLoaded', () => {
   AuthHandler.init();
   ThemeHandler.init();
   new SearchBar();
+
+  // Fix viewport height for mobile browsers
+  function setVH() {
+    let vh = window.innerHeight * 0.01;
+    document.documentElement.style.setProperty('--vh', `${vh}px`);
+  }
+
+  // Set initial viewport height
+  setVH();
+
+  // Update on resize and orientation change
+  window.addEventListener('resize', setVH);
+  window.addEventListener('orientationchange', setVH);
 });
 
 // Handle page visibility for online/offline status
