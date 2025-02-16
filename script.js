@@ -164,6 +164,18 @@ class AuthHandler {
     });
 
     this.setupProfilePictureListeners();
+
+    // Add logout button handler
+    document.getElementById('logout-btn')?.addEventListener('click', async () => {
+      if (confirm('Are you sure you want to logout?')) {
+          try {
+              await this.updateUserStatus('offline');
+              await auth.signOut();
+          } catch (error) {
+              console.error('Error signing out:', error);
+          }
+      }
+    });
   }
 
   static async handleLogin(e) {
