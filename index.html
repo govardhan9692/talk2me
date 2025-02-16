@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Talk2Me - Next-Gen Chat App</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Auth Section -->
+        <div id="auth-section" class="auth-section">
+            <div class="auth-container">
+                <h1>Talk2Me</h1>
+                <div class="auth-tabs">
+                    <button type="button" class="auth-tab active" data-tab="login">Login</button>
+                    <button type="button" class="auth-tab" data-tab="signup">Sign Up</button>
+                </div>
+                
+                <form id="login-form" class="auth-form">
+                    <input type="email" id="login-email" placeholder="Email" required>
+                    <input type="password" id="login-password" placeholder="Password" required>
+                    <button type="submit">Login</button>
+                </form>
+
+                <form id="signup-form" class="auth-form hidden">
+                    <div class="profile-upload">
+                        <img id="signup-preview" src="/api/placeholder/100/100" alt="Profile Preview">
+                        <input type="file" id="signup-profile-pic" accept="image/*" class="hidden">
+                        <button type="button" onclick="document.getElementById('signup-profile-pic').click()">
+                            Choose Profile Picture
+                        </button>
+                    </div>
+                    <input type="text" id="signup-name" placeholder="Full Name" required>
+                    <input type="email" id="signup-email" placeholder="Email" required>
+                    <input type="password" id="signup-password" placeholder="Password" required minlength="6">
+                    <input type="password" id="signup-confirm-password" placeholder="Confirm Password" required minlength="6">
+                    <button type="submit">Sign Up</button>
+                </form>
+                <p>Already have an account? <a href="#" onclick="toggleAuthForm('login')">Login</a></p>
+            </div>
+        </div>
+
+        <!-- Main Chat Section -->
+        <div id="chat-section" class="chat-section hidden">
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <div class="user-profile">
+                    <div class="profile-picture">
+                        <img id="user-avatar" src="/api/placeholder/48/48" alt="Profile">
+                        <div class="online-status"></div>
+                    </div>
+                    <div class="user-info">
+                        <h3 id="user-name">Loading...</h3>
+                        <p id="user-status">Available</p>
+                    </div>
+                    <button id="theme-toggle" class="theme-toggle">🌙</button>
+                </div>
+
+                <div class="user-search">
+                    <input type="text" placeholder="Search users...">
+                </div>
+
+                <div class="chat-list" id="chat-list">
+                    <!-- Chat list items will be dynamically added here -->
+                </div>
+            </div>
+
+            <!-- Chat Area -->
+            <div class="chat-area">
+                <div class="chat-header">
+                    <div class="chat-contact">
+                        <img id="contact-avatar" src="/api/placeholder/40/40" alt="Contact">
+                        <div class="contact-info">
+                            <h3 id="contact-name">Select a chat</h3>
+                            <p id="contact-status">offline</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="messages-container" id="messages-container">
+                    <!-- Messages will be dynamically added here -->
+                </div>
+
+                <div class="chat-input-area">
+                    <button class="input-action-btn">
+                        <i class="fas fa-plus"></i>
+                        </button>
+                    <button class="input-action-btn">
+                        <i class="far fa-image"></i>
+                    </button>
+                    <div class="message-input-container">
+                        <input type="text" id="message-input" placeholder="Type a message...">
+                        <button class="emoji-btn">
+                            <i class="far fa-smile"></i>
+                        </button>
+                    </div>
+                    <button class="send-btn">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Media Upload Modal -->
+        <div id="media-modal" class="modal hidden">
+            <div class="modal-content">
+                <h2>Upload Media</h2>
+                <div class="upload-area">
+                    <input type="file" id="media-upload" accept="image/*,video/*,audio/*,.pdf">
+                    <p>Drop files here or click to upload</p>
+                    <p class="file-limits">Max video size: 10MB</p>
+                </div>
+                <div class="modal-buttons">
+                    <button id="cancel-upload">Cancel</button>
+                    <button id="confirm-upload">Upload</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Firebase SDK -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.8.0/firebase-app-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.8.0/firebase-auth-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.8.0/firebase-firestore-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.8.0/firebase-messaging-compat.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
