@@ -75,6 +75,7 @@ class AuthHandler {
       const email = document.getElementById('signup-email').value;
       const password = document.getElementById('signup-password').value;
       const confirmPassword = document.getElementById('signup-confirm-password').value;
+      const profileImageUrl = document.getElementById('signup-preview').getAttribute('data-url');
 
       // Validation
       if (!name || !email || !password || !confirmPassword) {
@@ -89,54 +90,31 @@ class AuthHandler {
         throw new Error('Password must be at least 6 characters');
       }
 
-      // Step 1: Create authentication user
+      // Create authentication user
       const userCredential = await auth.createUserWithEmailAndPassword(email, password);
       const user = userCredential.user;
 
-      // Step 2: Update auth profile
+      // Update auth profile with name and photo URL
       await user.updateProfile({
-        displayName: name
+        displayName: name,
+        photoURL: profileImageUrl || null
       });
 
-      // Step 3: Create user document in Firestore IMMEDIATELY
+      // Create user document in Firestore
       await db.collection('users').doc(user.uid).set({
         name,
         email,
-        photoURL: null,
+        photoURL: profileImageUrl || null,
         status: 'online',
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         lastSeen: firebase.firestore.FieldValue.serverTimestamp()
       });
-
-      // Step 4: Handle profile picture if exists
-      if (document.getElementById('signup-profile-pic').files[0]) {
-        const photoURL = await this.handleProfileUpdate(
-          document.getElementById('signup-profile-pic').files[0]
-        );
-        
-        // Update both auth profile and Firestore document
-        await Promise.all([
-          user.updateProfile({ photoURL }),
-          db.collection('users').doc(user.uid).update({ photoURL })
-        ]);
-      }
 
       console.log('User profile created successfully');
       alert('Account created successfully!');
 
     } catch (error) {
       console.error('Signup error:', error);
-      
-      // If there's an error after auth creation but before Firestore document creation,
-      // attempt to delete the auth user to maintain consistency
-      if (auth.currentUser) {
-        try {
-          await auth.currentUser.delete();
-        } catch (deleteError) {
-          console.error('Error cleaning up auth user:', deleteError);
-        }
-      }
-      
       alert(error.message);
     }
   }
@@ -219,26 +197,8 @@ class AuthHandler {
     }
   }
 
-  static async handleProfileUpdate(file) {
+  static async handleProfileUpdate(photoURL) {
     try {
-      if (!file) return;
-
-      // Upload to Cloudinary
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('upload_preset', cloudinaryConfig.uploadPreset);
-
-      const response = await fetch(
-        `https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/image/upload`,
-        {
-          method: 'POST',
-          body: formData
-        }
-      );
-
-      const data = await response.json();
-      const photoURL = data.secure_url;
-
       // Update Firebase Auth profile
       await state.currentUser.updateProfile({
         photoURL: photoURL
@@ -259,23 +219,9 @@ class AuthHandler {
     }
   }
 
+  // Remove old profile picture handlers
   static setupProfilePictureListeners() {
-    // Add click handler for profile picture
-    const profilePic = document.getElementById('user-avatar');
-    if (profilePic) {
-      profilePic.addEventListener('click', () => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'image/*';
-        input.onchange = (e) => {
-          const file = e.target.files[0];
-          if (file) {
-            this.handleProfileUpdate(file);
-          }
-        };
-        input.click();
-      });
-    }
+    // Profile picture handling is now managed by ProfileEditor
   }
 }
 
@@ -1339,24 +1285,60 @@ class ThemeHandler {
   }
 }
 
+// Add this function for auth form switching
+function toggleAuthForm(formType) {
+    const loginForm = document.getElementById('login-form');
+    const signupForm = document.getElementById('signup-form');
+    const authTabs = document.querySelectorAll('.auth-tab');
+    const switchText = document.getElementById('auth-switch-text');
+
+    authTabs.forEach(tab => {
+        if (tab.getAttribute('data-tab') === formType) {
+            tab.classList.add('active');
+        } else {
+            tab.classList.remove('active');
+        }
+    });
+
+    if (formType === 'signup') {
+        loginForm.classList.add('hidden');
+        signupForm.classList.remove('hidden');
+        switchText.innerHTML = 'Already have an account? <a href="#" onclick="toggleAuthForm(\'login\')">Login</a>';
+    } else {
+        signupForm.classList.add('hidden');
+        loginForm.classList.remove('hidden');
+        switchText.innerHTML = 'Don\'t have an account? <a href="#" onclick="toggleAuthForm(\'signup\')">Sign Up</a>';
+    }
+}
+
 // Initialize the application
-document.addEventListener('DOMContentLoaded', () => {
-  AuthHandler.init();
-  ThemeHandler.init();
-  new SearchBar();
+document.addEventListener('DOMContentLoaded', async () => {
+    AuthHandler.init();
+    ThemeHandler.init();
+    
+    // Import SearchBar dynamically
+    try {
+        const SearchBarModule = await import('./components/SearchBar.js');
+        new SearchBarModule.default();
+    } catch (error) {
+        console.error('Error loading SearchBar:', error);
+    }
 
-  // Fix viewport height for mobile browsers
-  function setVH() {
-    let vh = window.innerHeight * 0.01;
-    document.documentElement.style.setProperty('--vh', `${vh}px`);
-  }
+    // Make toggleAuthForm available globally
+    window.toggleAuthForm = toggleAuthForm;
 
-  // Set initial viewport height
-  setVH();
+    // Fix viewport height for mobile browsers
+    function setVH() {
+        let vh = window.innerHeight * 0.01;
+        document.documentElement.style.setProperty('--vh', `${vh}px`);
+    }
 
-  // Update on resize and orientation change
-  window.addEventListener('resize', setVH);
-  window.addEventListener('orientationchange', setVH);
+    // Set initial viewport height
+    setVH();
+
+    // Update on resize and orientation change
+    window.addEventListener('resize', setVH);
+    window.addEventListener('orientationchange', setVH);
 });
 
 // Handle page visibility for online/offline status
