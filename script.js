@@ -1,4 +1,6 @@
 // Initialize Firebase with configuration
+import LoadingSpinner from './components/LoadingSpinner.js';
+
 const firebaseConfig = {
   apiKey: "AIzaSyD4TGRGQdBMIjxM_IuvAcX31iPyoB1CmSw",
   authDomain: "talk2me-f2dd1.firebaseapp.com",
@@ -70,6 +72,7 @@ class AuthHandler {
   
   static async handleSignup(e) {
     e.preventDefault();
+    const spinner = LoadingSpinner.show(document.querySelector('.auth-container'), 'Creating account...');
     try {
       const name = document.getElementById('signup-name').value;
       const email = document.getElementById('signup-email').value;
@@ -116,6 +119,8 @@ class AuthHandler {
     } catch (error) {
       console.error('Signup error:', error);
       alert(error.message);
+    } finally {
+      LoadingSpinner.hide(spinner);
     }
   }
   
@@ -158,6 +163,7 @@ class AuthHandler {
 
   static async handleLogin(e) {
     e.preventDefault();
+    const spinner = LoadingSpinner.show(document.querySelector('.auth-container'), 'Logging in...');
     const email = e.target.querySelector('input[type="email"]').value;
     const password = e.target.querySelector('input[type="password"]').value;
 
@@ -165,6 +171,8 @@ class AuthHandler {
       await auth.signInWithEmailAndPassword(email, password);
     } catch (error) {
       alert(error.message);
+    } finally {
+      LoadingSpinner.hide(spinner);
     }
   }
 
@@ -311,10 +319,15 @@ static handleSendMessage() {
 }
 
   static async sendMessage(content, type = 'text', file = null) {
+    let spinner;
     try {
       if (!state.currentChat) {
         alert('Please select a chat first');
         return;
+      }
+
+      if (file) {
+        spinner = LoadingSpinner.show(document.querySelector('.chat-input-area'), 'Uploading...');
       }
 
       let fileUrl = content;
@@ -350,6 +363,8 @@ static handleSendMessage() {
     } catch (error) {
       console.error('Error sending message:', error);
       alert('Failed to send message');
+    } finally {
+      LoadingSpinner.hide(spinner);
     }
   }
 
@@ -693,6 +708,7 @@ static handleSendMessage() {
 
   // Update loadChats to use real-time listener
   static async loadChats() {
+    const spinner = LoadingSpinner.show(document.querySelector('.chat-list'), 'Loading chats...');
     try {
       const chatList = document.getElementById('chat-list');
       chatList.innerHTML = ''; // Clear existing list
@@ -725,6 +741,8 @@ static handleSendMessage() {
       this.unsubscribeUsers = unsubscribe;
     } catch (error) {
       console.error('Error setting up chat list:', error);
+    } finally {
+      LoadingSpinner.hide(spinner);
     }
   }
 
@@ -754,7 +772,7 @@ static handleSendMessage() {
     // Update chat header with better structure
     const chatHeader = document.querySelector('.chat-header');
     chatHeader.innerHTML = `
-      <button class="mobile-back-btn" onclick="ChatHandler.handleBackButton()">
+      <button class="mobile-back-btn" onclick="window.ChatHandler.handleBackButton()">
         <i class="fas fa-arrow-left"></i>
       </button>
       <div class="chat-contact">
@@ -1111,6 +1129,7 @@ static closeContactInfo(button) {
   }
 
   static async loadMessages(chatUserId) {
+    const spinner = LoadingSpinner.show(elements.messagesContainer, 'Loading messages...');
     try {
       elements.messagesContainer.innerHTML = '';
       
@@ -1131,6 +1150,8 @@ static closeContactInfo(button) {
       });
     } catch (error) {
       console.error('Error loading messages:', error);
+    } finally {
+      LoadingSpinner.hide(spinner);
     }
   }
 
@@ -1368,4 +1389,7 @@ window.addEventListener('load', async () => {
     console.log('Service worker registration failed:', error);
   }
 });
+
+// Make ChatHandler globally available
+window.ChatHandler = ChatHandler;
 }
