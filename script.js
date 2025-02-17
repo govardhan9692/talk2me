@@ -1006,13 +1006,15 @@ static closeContactInfo(button) {
     modal.innerHTML = `
       <div class="modal-content video-preview">
         <h3>Send Video</h3>
-        <video controls width="100%">
-          <source src="${blobUrl}" type="${file.type}">
-          Your browser does not support the video tag.
-        </video>
+        <div class="video-container">
+            <video controls>
+                <source src="${blobUrl}" type="${file.type}">
+                Your browser does not support the video tag.
+            </video>
+        </div>
         <div class="modal-buttons">
-          <button onclick="this.closest('.modal').remove()">Cancel</button>
-          <button onclick="ChatHandler.sendVideo(this, '${blobUrl}')">Send</button>
+            <button onclick="this.closest('.modal').remove()">Cancel</button>
+            <button onclick="ChatHandler.sendVideo(this, '${blobUrl}')">Send</button>
         </div>
       </div>
     `;

@@ -2045,6 +2045,31 @@ messages-container::-webkit-scrollbar-thumb {
   opacity: 1;
 }
 
+/* Enhanced Chat List Scrollbar */
+.chat-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.chat-list::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+    border-radius: 10px;
+}
+
+.chat-list::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 10px;
+    border: 2px solid var(--bg-secondary);
+}
+
+.chat-list::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
+}
+
+/* Firefox scrollbar */
+.chat-list {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-color) var(--bg-secondary);
+}
 
 /* Responsive Design */
 @media (max-width: 768px) {
@@ -2618,5 +2643,31 @@ messages-container::-webkit-scrollbar-thumb {
 
     .editor-controls button {
         min-width: calc(50% - 0.5rem);
+    }
+}
+
+/* Video Preview Modal Improvements */
+.video-preview {
+    max-width: 90vw;
+    width: 100%;
+    padding: 1rem;
+}
+
+.video-preview video {
+    width: 100%;
+    max-height: 70vh;
+    object-fit: contain;
+    border-radius: var(--radius-md);
+    background: var(--bg-secondary);
+}
+
+@media (max-width: 768px) {
+    .video-preview {
+        max-width: 95vw;
+        padding: 0.5rem;
+    }
+
+    .video-preview video {
+        max-height: 50vh;
     }
 }

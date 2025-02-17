@@ -1,37 +1,88 @@
 class ProfileEditor {
     static init() {
-        this.modal = document.getElementById('profile-editor');
-        this.preview = document.getElementById('editor-image');
-        this.signupPreview = document.getElementById('signup-preview');
-        this.fileInput = document.getElementById('signup-profile-pic');
-        this.rotation = 0;
-        this.brightness = 100;
-        this.filters = new Set();
-        
-        // Fix duplicate file manager opening
+        this.widget = null;
         this.setupFileInput();
     }
 
     static setupFileInput() {
         const previewImage = document.getElementById('signup-preview');
-        const fileInput = document.getElementById('signup-profile-pic');
+        const userAvatar = document.getElementById('user-avatar');
 
-        // Remove old listeners
-        previewImage.replaceWith(previewImage.cloneNode(true));
-        const newPreview = document.getElementById('signup-preview');
+        // Remove old listeners and clone elements
+        const newPreview = previewImage.cloneNode(true);
+        previewImage.parentNode.replaceChild(newPreview, previewImage);
 
-        // Add new click handler
-        newPreview.addEventListener('click', (e) => {
-            e.stopPropagation();
-            fileInput.click();
-        });
-
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                this.openEditor(file);
+        // Setup Cloudinary widget once
+        this.widget = window.cloudinary.createUploadWidget({
+            cloudName: 'djvh8hdql',
+            uploadPreset: 'talk2me',
+            sources: [ // Enable multiple upload sources
+                'local',
+                'camera',
+                'url',
+                'facebook',
+                'instagram',
+                'google_drive'
+            ],
+            cropping: true,
+            croppingAspectRatio: 1,
+            croppingShowDimensions: true,
+            showSkipCropButton: false,
+            multiple: false,
+            maxFiles: 1,
+            // Enable built-in image editor
+            showAdvancedOptions: true,
+            styles: {
+                palette: {
+                    window: "#FFFFFF",
+                    windowBorder: "#90A0B3",
+                    tabIcon: "#0078FF",
+                    menuIcons: "#5A616A",
+                    textDark: "#000000",
+                    textLight: "#FFFFFF",
+                    link: "#0078FF",
+                    action: "#FF620C",
+                    inactiveTabIcon: "#0E2F5A",
+                    error: "#F44235",
+                    inProgress: "#0078FF",
+                    complete: "#20B832",
+                    sourceBg: "#E4EBF1"
+                }
+            }
+        }, (error, result) => {
+            if (!error && result && result.event === "success") {
+                const imageUrl = result.info.secure_url;
+                if (this.currentTarget === 'signup') {
+                    newPreview.src = imageUrl;
+                } else if (this.currentTarget === 'profile') {
+                    userAvatar.src = imageUrl;
+                    // Update user profile in database
+                    if (window.AuthHandler) {
+                        window.AuthHandler.handleProfileUpdate(imageUrl);
+                    }
+                }
             }
         });
+
+        // Add click handlers
+        newPreview.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            this.currentTarget = 'signup';
+            this.widget.open();
+        });
+
+        if (userAvatar) {
+            const newAvatar = userAvatar.cloneNode(true);
+            userAvatar.parentNode.replaceChild(newAvatar, userAvatar);
+            
+            newAvatar.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.currentTarget = 'profile';
+                this.widget.open();
+            });
+        }
     }
 
     static openEditor(file) {
