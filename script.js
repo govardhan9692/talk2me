@@ -789,7 +789,7 @@ static handleSendMessage() {
     userDiv.id = `chat-user-${userId}`;
     userDiv.innerHTML = `
       <div class="chat-user-avatar">
-        <img src="${userData.photoURL || '/api/placeholder/40/40'}" alt="${userData.name}">
+        <img src="${userData.photoURL || './image.png'}" alt="${userData.name}">
         <span class="status-dot ${userData.status === 'online' ? 'online' : 'offline'}"></span>
       </div>
       <div class="chat-user-info">
@@ -812,7 +812,7 @@ static handleSendMessage() {
         <i class="fas fa-arrow-left"></i>
       </button>
       <div class="chat-contact">
-        <img src="${userData.photoURL || '/api/placeholder/40/40'}" alt="${userData.name}" class="contact-avatar">
+        <img src="${userData.photoURL || './image.png'}" alt="${userData.name}" class="contact-avatar">
         <div class="contact-info">
           <h3>${userData.name}</h3>
           <span class="status-text ${userData.status}">${userData.status}</span>

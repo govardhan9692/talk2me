@@ -33,7 +33,7 @@
 
                 <form id="signup-form" class="auth-form hidden">
                     <div class="profile-upload">
-                        <img id="signup-preview" src="/api/placeholder/100/100" alt="Profile Preview">
+                        <img id="signup-preview" src="./image.png" alt="Profile Preview">
                         <input type="file" id="signup-profile-pic" accept="image/*" class="hidden">
                         <button type="button" onclick="document.getElementById('signup-profile-pic').click()">
                             <i class="fas fa-camera"></i> Choose Profile Picture
@@ -70,7 +70,7 @@
             <div class="sidebar">
                 <div class="user-profile">
                     <div class="profile-picture">
-                        <img id="user-avatar" src="/api/placeholder/48/48" alt="Profile">
+                        <img id="user-avatar" src="./image.png" alt="Profile">
                         <div class="online-status"></div>
                     </div>
                     <div class="user-info">
@@ -140,6 +140,32 @@
                     <button id="cancel-upload">Cancel</button>
                     <button id="confirm-upload">Upload</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="profile-editor" class="profile-editor-modal hidden">
+        <div class="profile-editor-content">
+            <div class="editor-preview">
+                <img id="editor-image" src="" alt="Profile Preview">
+            </div>
+            <div class="editor-controls">
+                <button onclick="ProfileEditor.rotate()">
+                    <i class="fas fa-rotate"></i> Rotate
+                </button>
+                <button onclick="ProfileEditor.adjustBrightness(10)">
+                    <i class="fas fa-sun"></i> Brighten
+                </button>
+                <button onclick="ProfileEditor.adjustBrightness(-10)">
+                    <i class="fas fa-moon"></i> Darken
+                </button>
+                <button onclick="ProfileEditor.toggleFilter('grayscale')">
+                    <i class="fas fa-adjust"></i> B&W
+                </button>
+            </div>
+            <div class="editor-actions">
+                <button class="cancel-edit" onclick="ProfileEditor.cancel()">Cancel</button>
+                <button class="save-edit" onclick="ProfileEditor.save()">Save</button>
             </div>
         </div>
     </div>
